@@ -47,6 +47,7 @@ android/.gradle/
 android/gradle/
 android/local.properties
 android/keystores/
+android/app/.cxx/
 
 # iOS
 ios/build/

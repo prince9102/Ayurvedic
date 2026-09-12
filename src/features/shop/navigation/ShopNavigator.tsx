@@ -10,14 +10,15 @@ import { ProductDetailScreen } from '../screens/ProductDetailScreen';
 import { CartScreen } from '../screens/CartScreen';
 import { CheckoutScreen } from '../screens/CheckoutScreen';
 import { WishlistScreen } from '../screens/WishlistScreen';
-import { useCartStore } from '../store/cartStore';
+import { selectCartItemCount } from '../store/cartSlice';
+import { useAppSelector } from '../../../shared/hooks/useRedux';
 
 const Stack = createNativeStackNavigator<ShopStackParamList>();
 
 function ShopHeaderButtons() {
   const navigation = useNavigation();
   const { colors } = useTheme();
-  const itemCount = useCartStore((s) => s.getItemCount());
+  const itemCount = useAppSelector(selectCartItemCount);
 
   return (
     <>

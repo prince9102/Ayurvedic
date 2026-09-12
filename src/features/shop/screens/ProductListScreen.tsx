@@ -11,7 +11,8 @@ import { useDebounce } from '../../../shared/hooks/useDebounce';
 import { Product, SortOption } from '../../../mocks/generators/products';
 import { PRODUCT_CATEGORIES } from '../../../mocks/constants';
 import { useProducts } from '../hooks/useShop';
-import { useWishlistStore } from '../store/wishlistStore';
+import { toggleWishlist, selectIsWishlisted } from '../store/wishlistSlice';
+import { useAppDispatch, useAppSelector } from '../../../shared/hooks/useRedux';
 import { ShopStackParamList } from '../navigation/types';
 
 type Nav = NativeStackNavigationProp<ShopStackParamList, 'ProductList'>;
@@ -76,11 +77,29 @@ const ProductCard = memo(function ProductCard({
   );
 });
 
+function ProductCardContainer({
+  product,
+  onPress,
+}: {
+  product: Product;
+  onPress: (id: string) => void;
+}) {
+  const dispatch = useAppDispatch();
+  const wishlisted = useAppSelector((state) => selectIsWishlisted(state, product.id));
+  return (
+    <ProductCard
+      product={product}
+      onPress={onPress}
+      onWishlist={(id) => dispatch(toggleWishlist(id))}
+      isWishlisted={wishlisted}
+    />
+  );
+}
+
 export function ProductListScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
   const { spacing } = useTheme();
-  const { toggle, isWishlisted } = useWishlistStore();
 
   const [search, setSearch] = useState('');
   const [categories, setCategories] = useState<string[]>([]);
@@ -98,10 +117,8 @@ export function ProductListScreen() {
     [debouncedSearch, categories, sort, inStockOnly],
   );
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isError, refetch } =
+  const { data: products, fetchNextPage, hasMore, isLoading, isError, refetch } =
     useProducts(filters);
-
-  const products = useMemo(() => data?.pages.flatMap((p) => p.data) ?? [], [data]);
 
   const handlePress = useCallback(
     (id: string) => navigation.navigate('ProductDetail', { productId: id }),
@@ -116,14 +133,9 @@ export function ProductListScreen() {
 
   const renderItem = useCallback(
     ({ item }: { item: Product }) => (
-      <ProductCard
-        product={item}
-        onPress={handlePress}
-        onWishlist={toggle}
-        isWishlisted={isWishlisted(item.id)}
-      />
+      <ProductCardContainer product={item} onPress={handlePress} />
     ),
-    [handlePress, toggle, isWishlisted],
+    [handlePress],
   );
 
   if (isLoading) return <LoadingOverlay />;
@@ -168,9 +180,8 @@ export function ProductListScreen() {
           data={products}
           renderItem={renderItem}
           keyExtractor={(item) => item.id}
-          onEndReached={() => hasNextPage && !isFetchingNextPage && fetchNextPage()}
+          onEndReached={() => hasMore && fetchNextPage()}
           onEndReachedThreshold={0.5}
-          ListFooterComponent={isFetchingNextPage ? <LoadingOverlay /> : null}
         />
       )}
     </View>

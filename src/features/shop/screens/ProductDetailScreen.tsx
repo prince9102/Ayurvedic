@@ -6,8 +6,9 @@ import { useTheme } from '../../../core/theme/ThemeProvider';
 import { useToast } from '../../../core/toast/ToastProvider';
 import { Button, LoadingOverlay } from '../../../shared/components/ui';
 import { useProduct } from '../hooks/useShop';
-import { useCartStore } from '../store/cartStore';
-import { useWishlistStore } from '../store/wishlistStore';
+import { addItem, selectCartItems } from '../store/cartSlice';
+import { toggleWishlist, selectIsWishlisted } from '../store/wishlistSlice';
+import { useAppDispatch, useAppSelector } from '../../../shared/hooks/useRedux';
 import { ShopStackParamList } from '../navigation/types';
 
 type Route = RouteProp<ShopStackParamList, 'ProductDetail'>;
@@ -18,20 +19,23 @@ export function ProductDetailScreen() {
   const { showToast } = useToast();
   const route = useRoute<Route>();
   const { productId } = route.params;
+  const dispatch = useAppDispatch();
 
   const { data: product, isLoading } = useProduct(productId);
-  const addItem = useCartStore((s) => s.addItem);
-  const { toggle, isWishlisted } = useWishlistStore();
+  const cartItems = useAppSelector(selectCartItems);
+  const wishlisted = useAppSelector((state) => selectIsWishlisted(state, productId));
 
   if (isLoading || !product) return <LoadingOverlay />;
 
   const handleAddToCart = () => {
-    addItem({
-      productId: product.id,
-      name: product.name,
-      price: product.price,
-      imageUrl: product.imageUrl,
-    });
+    dispatch(addItem({
+      item: {
+        productId: product.id,
+        name: product.name,
+        price: product.price,
+        imageUrl: product.imageUrl,
+      },
+    }));
     showToast(t('shop.addedToCart'), 'success');
   };
 
@@ -65,8 +69,8 @@ export function ProductDetailScreen() {
             disabled={!product.inStock}
           />
           <Button
-            title={isWishlisted(product.id) ? t('shop.wishlisted') : t('shop.addToWishlist')}
-            onPress={() => toggle(product.id)}
+            title={wishlisted ? t('shop.wishlisted') : t('shop.addToWishlist')}
+            onPress={() => dispatch(toggleWishlist(product.id))}
             variant="outline"
           />
         </View>

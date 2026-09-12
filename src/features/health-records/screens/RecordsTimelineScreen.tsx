@@ -88,7 +88,7 @@ const RecordCard = memo(function RecordCard({
 export function RecordsTimelineScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
-  const { spacing } = useTheme();
+  const { colors, spacing } = useTheme();
 
   const [search, setSearch] = useState('');
   const [types, setTypes] = useState<RecordType[]>([]);
@@ -103,10 +103,8 @@ export function RecordsTimelineScreen() {
     [debouncedSearch, types],
   );
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isError, refetch } =
+  const { data: records, fetchNextPage, hasMore, isLoading, isError, refetch } =
     useHealthRecordsInfinite(filters);
-
-  const records = useMemo(() => data?.pages.flatMap((p) => p.data) ?? [], [data]);
 
   const groupedRecords = useMemo(() => {
     if (groupBy === 'none') return null;
@@ -181,17 +179,17 @@ export function RecordsTimelineScreen() {
           )}
           keyExtractor={([title]) => title}
           estimatedItemSize={200}
-          onEndReached={() => hasNextPage && !isFetchingNextPage && fetchNextPage()}
+          onEndReached={() => hasMore && fetchNextPage()}
         />
       ) : (
         <FlashList
           data={records}
           renderItem={renderItem}
           keyExtractor={(item) => item.id}
-          onEndReached={() => hasNextPage && !isFetchingNextPage && fetchNextPage()}
+          onEndReached={() => hasMore && fetchNextPage()}
           estimatedItemSize={120}
           onEndReachedThreshold={0.5}
-          ListFooterComponent={isFetchingNextPage ? <LoadingOverlay /> : null}
+          ListFooterComponent={isLoading ? <LoadingOverlay /> : null}
         />
       )}
     </View>

@@ -1,50 +1,35 @@
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { healthRecordsApi, RecordFilters } from '../api/healthRecordsApi';
-import { GroupedRecordsResponse } from '../api/healthRecordsApi';
-import { PaginatedResponse } from '../../../shared/types/api';
-import { HealthRecord } from '../../../mocks/generators/healthRecords';
+import { useEffect, useCallback } from 'react';
+import { useAppDispatch, useAppSelector } from '../../../shared/hooks/useRedux';
+import { fetchHealthRecords, fetchHealthRecord, setFilters } from '../store/healthRecordsSlice';
+import { RecordFilters } from '../api/healthRecordsApi';
+import { RootState } from '../../../app/store';
 
-export const recordsKeys = {
-  all: ['health-records'] as const,
-  list: (filters: RecordFilters) => [...recordsKeys.all, 'list', filters] as const,
-  detail: (id: string) => [...recordsKeys.all, 'detail', id] as const,
-};
+export function useHealthRecordsInfinite(filters: RecordFilters) {
+  const dispatch = useAppDispatch();
+  const { items, loading, error, hasMore, page } = useAppSelector((s: RootState) => s.healthRecords);
 
-export function useHealthRecords(filters: RecordFilters) {
-  const isGrouped = filters.groupBy && filters.groupBy !== 'none';
+  useEffect(() => {
+    dispatch(setFilters(filters));
+    dispatch(fetchHealthRecords({ filters, page: 0 }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(filters)]);
 
-  return useQuery({
-    queryKey: recordsKeys.list(filters),
-    queryFn: () => healthRecordsApi.getRecords(filters),
-    staleTime: 5 * 60 * 1000,
-    select: (data) => {
-      if (isGrouped) return data as GroupedRecordsResponse;
-      return data as PaginatedResponse<HealthRecord>;
-    },
-  });
-}
+  const fetchNextPage = useCallback(() => {
+    if (hasMore && !loading) {
+      dispatch(fetchHealthRecords({ filters, page: page + 1 }));
+    }
+  }, [dispatch, filters, hasMore, loading, page]);
 
-export function useHealthRecordsInfinite(filters: Omit<RecordFilters, 'groupBy'>) {
-  return useInfiniteQuery({
-    queryKey: [...recordsKeys.list({ ...filters, groupBy: 'none' }), 'infinite'],
-    queryFn: ({ pageParam = 0 }) =>
-      healthRecordsApi.getRecords({
-        ...filters,
-        groupBy: 'none',
-        page: pageParam,
-        pageSize: 30,
-      }) as Promise<PaginatedResponse<HealthRecord>>,
-    getNextPageParam: (lastPage) =>
-      lastPage.hasMore ? lastPage.page + 1 : undefined,
-    initialPageParam: 0,
-    staleTime: 5 * 60 * 1000,
-  });
+  return { data: items, isLoading: loading, isError: !!error, hasMore, fetchNextPage, refetch: () => dispatch(fetchHealthRecords({ filters, page: 0 })) };
 }
 
 export function useHealthRecord(id: string) {
-  return useQuery({
-    queryKey: recordsKeys.detail(id),
-    queryFn: () => healthRecordsApi.getRecord(id),
-    enabled: !!id,
-  });
+  const dispatch = useAppDispatch();
+  const { selectedRecord, selectedRecordLoading } = useAppSelector((s: RootState) => s.healthRecords);
+
+  useEffect(() => {
+    if (id) dispatch(fetchHealthRecord(id));
+  }, [dispatch, id]);
+
+  return { data: selectedRecord, isLoading: selectedRecordLoading };
 }

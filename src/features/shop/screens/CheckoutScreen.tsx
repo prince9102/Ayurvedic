@@ -6,7 +6,8 @@ import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../../core/theme/ThemeProvider';
 import { useToast } from '../../../core/toast/ToastProvider';
 import { Button } from '../../../shared/components/ui';
-import { useCartStore } from '../store/cartStore';
+import { clearCart, selectCartItems, selectCartTotal } from '../store/cartSlice';
+import { useAppDispatch, useAppSelector } from '../../../shared/hooks/useRedux';
 import { ShopStackParamList } from '../navigation/types';
 
 type Nav = NativeStackNavigationProp<ShopStackParamList, 'Checkout'>;
@@ -16,16 +17,15 @@ export function CheckoutScreen() {
   const { colors, spacing, typography } = useTheme();
   const { showToast } = useToast();
   const navigation = useNavigation<Nav>();
-  const items = useCartStore((s) => s.items);
-  const getTotal = useCartStore((s) => s.getTotal);
-  const clearCart = useCartStore((s) => s.clearCart);
+  const dispatch = useAppDispatch();
+  const items = useAppSelector(selectCartItems);
+  const subtotal = useAppSelector(selectCartTotal);
 
-  const subtotal = getTotal();
   const shipping = subtotal > 500 ? 0 : 49;
   const total = subtotal + shipping;
 
   const handlePlaceOrder = () => {
-    clearCart();
+    dispatch(clearCart());
     showToast(t('shop.orderSuccess'), 'success');
     navigation.popToTop();
   };
@@ -70,5 +70,6 @@ export function CheckoutScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  section: {},
   line: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
 });

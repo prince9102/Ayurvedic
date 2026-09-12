@@ -6,7 +6,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../../core/theme/ThemeProvider';
 import { Button, EmptyState } from '../../../shared/components/ui';
-import { useCartStore, CartItem } from '../store/cartStore';
+import { CartItem, removeItem, updateQuantity, selectCartItems, selectCartTotal } from '../store/cartSlice';
+import { useAppDispatch, useAppSelector } from '../../../shared/hooks/useRedux';
 import { ShopStackParamList } from '../navigation/types';
 
 type Nav = NativeStackNavigationProp<ShopStackParamList, 'Cart'>;
@@ -76,16 +77,25 @@ export function CartScreen() {
   const { t } = useTranslation();
   const { colors, spacing, typography } = useTheme();
   const navigation = useNavigation<Nav>();
-  const items = useCartStore((s) => s.items);
-  const updateQuantity = useCartStore((s) => s.updateQuantity);
-  const removeItem = useCartStore((s) => s.removeItem);
-  const getTotal = useCartStore((s) => s.getTotal);
+  const dispatch = useAppDispatch();
+  const items = useAppSelector(selectCartItems);
+  const total = useAppSelector(selectCartTotal);
+
+  const handleUpdate = useCallback(
+    (productId: string, qty: number) => dispatch(updateQuantity({ productId, quantity: qty })),
+    [dispatch],
+  );
+
+  const handleRemove = useCallback(
+    (productId: string) => dispatch(removeItem(productId)),
+    [dispatch],
+  );
 
   const renderItem = useCallback(
     ({ item }: { item: CartItem }) => (
-      <CartItemRow item={item} onUpdate={updateQuantity} onRemove={removeItem} />
+      <CartItemRow item={item} onUpdate={handleUpdate} onRemove={handleRemove} />
     ),
-    [updateQuantity, removeItem],
+    [handleUpdate, handleRemove],
   );
 
   if (items.length === 0) {
@@ -107,7 +117,7 @@ export function CartScreen() {
         ]}
       >
         <Text style={[typography.h3, { color: colors.text }]}>
-          {t('shop.total')}: ₹{getTotal()}
+          {t('shop.total')}: ₹{total}
         </Text>
         <Button
           title={t('shop.checkout')}

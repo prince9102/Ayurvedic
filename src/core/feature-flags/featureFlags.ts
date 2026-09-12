@@ -3,17 +3,11 @@ import { logger } from '../logging/logger';
 
 export interface FeatureFlags {
   enableShopWishlist: boolean;
-  enableHealthRecordsExport: boolean;
-  enableConsultationVideo: boolean;
-  enableNewCheckout: boolean;
   maxCartItems: number;
 }
 
 const DEFAULT_FLAGS: FeatureFlags = {
   enableShopWishlist: true,
-  enableHealthRecordsExport: false,
-  enableConsultationVideo: false,
-  enableNewCheckout: true,
   maxCartItems: 50,
 };
 
@@ -31,7 +25,7 @@ export const featureFlags = {
     return typeof value === 'boolean' ? value : false;
   },
 
-  async load(): Promise<FeatureFlags> {
+  async load(): Promise<void> {
     try {
       const stored = await storage.get<FeatureFlags>(STORAGE_KEY);
       if (stored) {
@@ -40,14 +34,9 @@ export const featureFlags = {
     } catch (error) {
       logger.warn('Failed to load feature flags', error);
     }
-    return cachedFlags;
   },
 
-  async update(flags: Partial<FeatureFlags>): Promise<void> {
-    cachedFlags = { ...cachedFlags, ...flags };
-    await storage.set(STORAGE_KEY, cachedFlags);
-  },
-
+  // only used in tests
   reset() {
     cachedFlags = { ...DEFAULT_FLAGS };
   },

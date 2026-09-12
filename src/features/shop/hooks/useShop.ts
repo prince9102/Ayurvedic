@@ -1,27 +1,35 @@
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { shopApi, ProductFilters } from '../api/shopApi';
-
-export const shopKeys = {
-  all: ['shop'] as const,
-  products: (filters: ProductFilters) => [...shopKeys.all, 'products', filters] as const,
-  product: (id: string) => [...shopKeys.all, 'product', id] as const,
-};
+import { useEffect, useCallback } from 'react';
+import { useAppDispatch, useAppSelector } from '../../../shared/hooks/useRedux';
+import { fetchProducts, fetchProduct, setFilters } from '../store/productsSlice';
+import { ProductFilters } from '../api/shopApi';
+import { RootState } from '../../../app/store';
 
 export function useProducts(filters: ProductFilters) {
-  return useInfiniteQuery({
-    queryKey: shopKeys.products(filters),
-    queryFn: ({ pageParam = 0 }) =>
-      shopApi.getProducts({ ...filters, page: pageParam, pageSize: 20 }),
-    getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.page + 1 : undefined),
-    initialPageParam: 0,
-    staleTime: 5 * 60 * 1000,
-  });
+  const dispatch = useAppDispatch();
+  const { items, loading, error, hasMore, page } = useAppSelector((s: RootState) => s.products);
+
+  useEffect(() => {
+    dispatch(setFilters(filters));
+    dispatch(fetchProducts({ filters, page: 0 }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(filters)]);
+
+  const fetchNextPage = useCallback(() => {
+    if (hasMore && !loading) {
+      dispatch(fetchProducts({ filters, page: page + 1 }));
+    }
+  }, [dispatch, filters, hasMore, loading, page]);
+
+  return { data: items, isLoading: loading, isError: !!error, hasMore, fetchNextPage, refetch: () => dispatch(fetchProducts({ filters, page: 0 })) };
 }
 
 export function useProduct(id: string) {
-  return useQuery({
-    queryKey: shopKeys.product(id),
-    queryFn: () => shopApi.getProduct(id),
-    enabled: !!id,
-  });
+  const dispatch = useAppDispatch();
+  const { selectedProduct, selectedProductLoading } = useAppSelector((s: RootState) => s.products);
+
+  useEffect(() => {
+    if (id) dispatch(fetchProduct(id));
+  }, [dispatch, id]);
+
+  return { data: selectedProduct, isLoading: selectedProductLoading };
 }

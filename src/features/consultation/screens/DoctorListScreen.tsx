@@ -76,14 +76,9 @@ export function DoctorListScreen() {
     [debouncedSearch, specialty, city],
   );
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isError, refetch } =
+  const { data: doctors, fetchNextPage, hasMore, isLoading, isError, refetch } =
     useDoctors(filters);
   const { data: specialties } = useSpecialties();
-
-  const doctors = useMemo(
-    () => data?.pages.flatMap((p) => p.data) ?? [],
-    [data],
-  );
 
   const handlePress = useCallback(
     (id: string) => navigation.navigate('DoctorDetail', { doctorId: id }),
@@ -148,12 +143,9 @@ export function DoctorListScreen() {
           data={doctors}
           renderItem={renderItem}
           keyExtractor={keyExtractor}
-          onEndReached={() => hasNextPage && !isFetchingNextPage && fetchNextPage()}
+          onEndReached={() => hasMore && fetchNextPage()}
           onEndReachedThreshold={0.5}
           estimatedItemSize={100}
-          ListFooterComponent={
-            isFetchingNextPage ? <LoadingOverlay /> : null
-          }
         />
       )}
     </View>

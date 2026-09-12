@@ -10,13 +10,6 @@ export class AppError extends Error {
   }
 }
 
-export class NetworkError extends AppError {
-  constructor(message = 'Network request failed', retryable = true) {
-    super(message, 'NETWORK_ERROR', 0, retryable);
-    this.name = 'NetworkError';
-  }
-}
-
 export class TimeoutError extends AppError {
   constructor(message = 'Request timed out') {
     super(message, 'TIMEOUT', 408, true);
@@ -47,10 +40,4 @@ export class ConflictError extends AppError {
 
 export function isAppError(error: unknown): error is AppError {
   return error instanceof AppError;
-}
-
-export function getErrorMessage(error: unknown): string {
-  if (isAppError(error)) return error.message;
-  if (error instanceof Error) return error.message;
-  return 'An unexpected error occurred';
 }

@@ -5,7 +5,7 @@ module.exports = {
     '^react-native/setup-env$': '<rootDir>/jest.setup-env.js',
   },
   transformIgnorePatterns: [
-    'node_modules/(?!((jest-)?react-native|@react-native(-community)?)|react-navigation|@react-navigation/.*|@shopify/flash-list|@tanstack/.*)',
+    'node_modules/(?!((jest-)?react-native|@react-native(-community)?)|react-navigation|@react-navigation/.*|@shopify/flash-list|@tanstack/.*|@reduxjs/toolkit|immer|redux-persist)',
   ],
   testPathIgnorePatterns: ['/node_modules/', '/e2e/'],
   collectCoverageFrom: [

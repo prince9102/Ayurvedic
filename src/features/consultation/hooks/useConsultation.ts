@@ -1,136 +1,149 @@
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { consultationApi, DoctorFilters } from '../api/consultationApi';
+import { useEffect, useCallback } from 'react';
+import { useAppDispatch, useAppSelector } from '../../../shared/hooks/useRedux';
 import { useNetwork } from '../../../core/network/NetworkProvider';
 import { offlineQueue } from '../../../core/sync/offlineQueue';
-import { useBookingStore } from '../store/bookingStore';
+import {
+  fetchDoctors,
+  fetchDoctor,
+  fetchSlots,
+  fetchBookings,
+  fetchSpecialties,
+  createBooking,
+  cancelBooking,
+  setFilters,
+  addPendingBooking,
+} from '../store/doctorsSlice';
+import { DoctorFilters } from '../api/consultationApi';
 import { Booking } from '../../../mocks/generators/doctors';
-import { isAppError } from '../../../core/errors/AppError';
-
-export const consultationKeys = {
-  all: ['consultation'] as const,
-  doctors: (filters: DoctorFilters) => [...consultationKeys.all, 'doctors', filters] as const,
-  doctor: (id: string) => [...consultationKeys.all, 'doctor', id] as const,
-  slots: (doctorId: string, date: string) =>
-    [...consultationKeys.all, 'slots', doctorId, date] as const,
-  bookings: () => [...consultationKeys.all, 'bookings'] as const,
-  specialties: () => [...consultationKeys.all, 'specialties'] as const,
-};
+import { RootState } from '../../../app/store';
 
 export function useDoctors(filters: DoctorFilters) {
-  return useInfiniteQuery({
-    queryKey: consultationKeys.doctors(filters),
-    queryFn: ({ pageParam = 0 }) =>
-      consultationApi.getDoctors({ ...filters, page: pageParam, pageSize: 20 }),
-    getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.page + 1 : undefined),
-    initialPageParam: 0,
-    staleTime: 5 * 60 * 1000,
-  });
+  const dispatch = useAppDispatch();
+  const { items, loading, error, hasMore, page } = useAppSelector((s: RootState) => s.doctors);
+
+  useEffect(() => {
+    dispatch(setFilters(filters));
+    dispatch(fetchDoctors({ filters, page: 0 }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(filters)]);
+
+  const fetchNextPage = useCallback(() => {
+    if (hasMore && !loading) {
+      dispatch(fetchDoctors({ filters, page: page + 1 }));
+    }
+  }, [dispatch, filters, hasMore, loading, page]);
+
+  return { data: items, isLoading: loading, isError: !!error, hasMore, fetchNextPage, refetch: () => dispatch(fetchDoctors({ filters, page: 0 })) };
 }
 
 export function useDoctor(id: string) {
-  return useQuery({
-    queryKey: consultationKeys.doctor(id),
-    queryFn: () => consultationApi.getDoctor(id),
-    enabled: !!id,
-  });
+  const dispatch = useAppDispatch();
+  const { selectedDoctor, selectedDoctorLoading } = useAppSelector((s: RootState) => s.doctors);
+
+  useEffect(() => {
+    if (id) dispatch(fetchDoctor(id));
+  }, [dispatch, id]);
+
+  return { data: selectedDoctor, isLoading: selectedDoctorLoading };
 }
 
 export function useDoctorSlots(doctorId: string, date: string) {
-  return useQuery({
-    queryKey: consultationKeys.slots(doctorId, date),
-    queryFn: () => consultationApi.getSlots(doctorId, date),
-    enabled: !!doctorId,
-    staleTime: 60 * 1000,
-  });
+  const dispatch = useAppDispatch();
+  const { slots, slotsLoading } = useAppSelector((s: RootState) => s.doctors);
+
+  useEffect(() => {
+    if (doctorId) dispatch(fetchSlots({ doctorId, date }));
+  }, [dispatch, doctorId, date]);
+
+  return { data: slots, isLoading: slotsLoading };
 }
 
 export function useBookings() {
-  const { pendingBookings } = useBookingStore();
-  const query = useQuery({
-    queryKey: consultationKeys.bookings(),
-    queryFn: () => consultationApi.getBookings(),
-    staleTime: 30 * 1000,
-  });
+  const dispatch = useAppDispatch();
+  const { bookings, bookingsLoading } = useAppSelector((s: RootState) => s.doctors);
+  const pendingBookings = useAppSelector((s: RootState) => s.booking.pendingBookings);
+
+  useEffect(() => {
+    dispatch(fetchBookings());
+  }, [dispatch]);
 
   const merged = [
     ...pendingBookings,
-    ...(query.data ?? []).filter(
-      (b) => !pendingBookings.some((p) => p.slotId === b.slotId),
-    ),
+    ...bookings.filter((b) => !pendingBookings.some((p) => p.slotId === b.slotId)),
   ];
 
-  return { ...query, data: merged };
+  return { data: merged, isLoading: bookingsLoading };
 }
 
 export function useSpecialties() {
-  return useQuery({
-    queryKey: consultationKeys.specialties(),
-    queryFn: () => consultationApi.getSpecialties(),
-    staleTime: Infinity,
-  });
+  const dispatch = useAppDispatch();
+  const specialties = useAppSelector((s: RootState) => s.doctors.specialties);
+
+  useEffect(() => {
+    if (specialties.length === 0) dispatch(fetchSpecialties());
+  }, [dispatch, specialties.length]);
+
+  return { data: specialties };
 }
 
 export function useCreateBooking() {
-  const queryClient = useQueryClient();
+  const dispatch = useAppDispatch();
   const { isOnline } = useNetwork();
-  const { addPendingBooking } = useBookingStore();
 
-  return useMutation({
-    mutationFn: async ({
-      doctorId,
-      slotId,
-      doctorName,
-      startTime,
-      endTime,
-    }: {
-      doctorId: string;
-      slotId: string;
-      doctorName: string;
-      startTime: string;
-      endTime: string;
-    }) => {
-      if (!isOnline) {
-        const pending: Booking = {
-          id: `pending-${Date.now()}`,
-          doctorId,
-          doctorName,
-          slotId,
-          startTime,
-          endTime,
-          status: 'pending_sync',
-          createdAt: new Date().toISOString(),
-        };
-        await offlineQueue.enqueue('CREATE_BOOKING', { doctorId, slotId });
-        addPendingBooking(pending);
-        return pending;
-      }
-      return consultationApi.createBooking(doctorId, slotId, startTime);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: consultationKeys.bookings() });
-    },
-    onError: (error) => {
-      if (isAppError(error) && error.code === 'CONFLICT') {
-        queryClient.invalidateQueries({ queryKey: consultationKeys.all });
+  const mutate = useCallback(
+    async (
+      params: { doctorId: string; slotId: string; doctorName: string; startTime: string; endTime: string },
+      callbacks?: { onSuccess?: () => void; onError?: (e: unknown) => void },
+    ) => {
+      try {
+        if (!isOnline) {
+          const pending: Booking = {
+            id: `pending-${Date.now()}`,
+            doctorId: params.doctorId,
+            doctorName: params.doctorName,
+            slotId: params.slotId,
+            startTime: params.startTime,
+            endTime: params.endTime,
+            status: 'pending_sync',
+            createdAt: new Date().toISOString(),
+          };
+          await offlineQueue.enqueue('CREATE_BOOKING', { doctorId: params.doctorId, slotId: params.slotId });
+          dispatch(addPendingBooking(pending));
+          callbacks?.onSuccess?.();
+          return;
+        }
+        await dispatch(createBooking({ doctorId: params.doctorId, slotId: params.slotId, startTime: params.startTime })).unwrap();
+        callbacks?.onSuccess?.();
+      } catch (e) {
+        callbacks?.onError?.(e);
       }
     },
-  });
+    [dispatch, isOnline],
+  );
+
+  return { mutate, isPending: false };
 }
 
 export function useCancelBooking() {
-  const queryClient = useQueryClient();
+  const dispatch = useAppDispatch();
   const { isOnline } = useNetwork();
 
-  return useMutation({
-    mutationFn: async (bookingId: string) => {
-      if (!isOnline) {
-        await offlineQueue.enqueue('CANCEL_BOOKING', { bookingId });
-        return { id: bookingId, status: 'cancelled' as const };
+  const mutate = useCallback(
+    async (bookingId: string, callbacks?: { onSuccess?: () => void; onError?: (e: unknown) => void }) => {
+      try {
+        if (!isOnline) {
+          await offlineQueue.enqueue('CANCEL_BOOKING', { bookingId });
+          callbacks?.onSuccess?.();
+          return;
+        }
+        await dispatch(cancelBooking(bookingId)).unwrap();
+        callbacks?.onSuccess?.();
+      } catch (e) {
+        callbacks?.onError?.(e);
       }
-      return consultationApi.cancelBooking(bookingId);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: consultationKeys.bookings() });
-    },
-  });
+    [dispatch, isOnline],
+  );
+
+  return { mutate };
 }

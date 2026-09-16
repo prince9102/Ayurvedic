@@ -1,5 +1,4 @@
 import * as Keychain from 'react-native-keychain';
-import { logger } from '../logging/logger';
 
 const PREFIX = 'ayurvedic_';
 
@@ -9,7 +8,7 @@ export const secureStorage = {
       const result = await Keychain.getGenericPassword({ service: `${PREFIX}${key}` });
       return result ? result.password : null;
     } catch (error) {
-      logger.error(`Secure storage get failed: ${key}`, error);
+      
       return null;
     }
   },
@@ -18,7 +17,7 @@ export const secureStorage = {
     try {
       await Keychain.setGenericPassword(key, value, { service: `${PREFIX}${key}` });
     } catch (error) {
-      logger.error(`Secure storage set failed: ${key}`, error);
+      
     }
   },
 
@@ -26,7 +25,7 @@ export const secureStorage = {
     try {
       await Keychain.resetGenericPassword({ service: `${PREFIX}${key}` });
     } catch (error) {
-      logger.error(`Secure storage remove failed: ${key}`, error);
+     
     }
   },
 };

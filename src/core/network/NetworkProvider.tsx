@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
-import { logger } from '../logging/logger';
+
 
 interface NetworkContextValue {
   isOnline: boolean;
@@ -18,10 +18,6 @@ export function NetworkProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener((nextState) => {
       setState(nextState);
-      logger.debug('Network state changed', {
-        connected: nextState.isConnected,
-        reachable: nextState.isInternetReachable,
-      });
     });
 
     NetInfo.fetch().then(setState);

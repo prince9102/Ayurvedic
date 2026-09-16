@@ -145,7 +145,7 @@ export function DoctorListScreen() {
           keyExtractor={keyExtractor}
           onEndReached={() => hasMore && fetchNextPage()}
           onEndReachedThreshold={0.5}
-          estimatedItemSize={100}
+          
         />
       )}
     </View>

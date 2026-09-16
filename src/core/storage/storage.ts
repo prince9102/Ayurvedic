@@ -1,5 +1,4 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { logger } from '../logging/logger';
 
 const PREFIX = '@ayurvedic:';
 
@@ -10,7 +9,7 @@ export const storage = {
       if (!raw) return null;
       return JSON.parse(raw) as T;
     } catch (error) {
-      logger.error(`Storage get failed: ${key}`, error);
+     
       return null;
     }
   },
@@ -19,7 +18,7 @@ export const storage = {
     try {
       await AsyncStorage.setItem(`${PREFIX}${key}`, JSON.stringify(value));
     } catch (error) {
-      logger.error(`Storage set failed: ${key}`, error);
+     
     }
   },
 
@@ -27,7 +26,7 @@ export const storage = {
     try {
       await AsyncStorage.removeItem(`${PREFIX}${key}`);
     } catch (error) {
-      logger.error(`Storage remove failed: ${key}`, error);
+     
     }
   },
 };

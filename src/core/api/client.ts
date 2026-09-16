@@ -1,7 +1,5 @@
 import { config } from '../config/env';
 import { AppError, SessionExpiredError, TimeoutError } from '../errors/AppError';
-import { logger } from '../logging/logger';
-import { performanceMonitor } from '../monitoring/performance';
 import { secureStorage } from '../storage/secureStorage';
 
 export interface ApiRequestOptions {
@@ -27,15 +25,11 @@ export async function apiClient<T>(
   path: string,
   options: ApiRequestOptions = {},
 ): Promise<T> {
-  const endTimer = performanceMonitor.startTimer(`api:${options.method ?? 'GET'}:${path}`);
   const timeout = options.timeout ?? config.apiTimeoutMs;
 
   try {
     const token = options.skipAuth ? null : await secureStorage.get('auth_token');
 
-    if (!options.skipAuth && path !== '/auth/login' && !token && config.env === 'production') {
-      throw new SessionExpiredError();
-    }
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -93,9 +87,7 @@ export async function apiClient<T>(
     if (error instanceof Error && error.name === 'AbortError') {
       throw new TimeoutError();
     }
-    logger.error(`API request failed: ${path}`, error);
     throw new AppError('Network request failed', 'NETWORK_ERROR', 0, true);
   } finally {
-    endTimer();
   }
 }

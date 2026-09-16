@@ -1,4 +1,4 @@
-export type Environment = 'development' | 'staging' | 'production';
+export type Environment = 'development';
 
 export interface AppConfig {
   env: Environment;
@@ -22,28 +22,8 @@ const configs: Record<Environment, AppConfig> = {
     mockSlowNetworkRate: 0.1,
     enableLogging: true,
     enablePerformanceMonitoring: true,
-    featureFlagsEndpoint: 'mock://feature-flags',
-  },
-  staging: {
-    env: 'staging',
-    apiBaseUrl: 'https://staging-api.ayurvedic.app',
-    apiTimeoutMs: 12000,
-    mockFailureRate: 0,
-    mockSlowNetworkRate: 0,
-    enableLogging: true,
-    enablePerformanceMonitoring: true,
-    featureFlagsEndpoint: 'https://staging-api.ayurvedic.app/config',
-  },
-  production: {
-    env: 'production',
-    apiBaseUrl: 'https://api.ayurvedic.app',
-    apiTimeoutMs: 10000,
-    mockFailureRate: 0,
-    mockSlowNetworkRate: 0,
-    enableLogging: false,
-    enablePerformanceMonitoring: true,
-    featureFlagsEndpoint: 'https://api.ayurvedic.app/config',
-  },
+    featureFlagsEndpoint: 'mock://feature-flags'
+  }
 };
 
 export const config = configs[env];

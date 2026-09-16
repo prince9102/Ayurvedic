@@ -1,7 +1,6 @@
 import { config } from '../core/config/env';
 import { AppError, ConflictError, ValidationError } from '../core/errors/AppError';
 import { featureFlags } from '../core/feature-flags/featureFlags';
-import { logger } from '../core/logging/logger';
 import { storage } from '../core/storage/storage';
 import { DOCTOR_COUNT, HEALTH_RECORD_COUNT, PRODUCT_COUNT, SPECIALTIES } from './constants';
 import {
@@ -144,7 +143,6 @@ export async function mockApiHandler(path: string, options: ApiRequestOptions): 
   const method = options.method ?? 'GET';
   const body = options.body as Record<string, unknown> | undefined;
 
-  logger.debug(`Mock API: ${method} ${basePath}`);
 
   // Feature flags
   if (basePath === '/config/feature-flags') {
